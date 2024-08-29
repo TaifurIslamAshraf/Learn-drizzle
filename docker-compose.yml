@@ -1,6 +1,6 @@
 services:
   db:
-    container_name: db
+    container_name: drizzleLearn
     image: postgres:latest
     environment:
       - POSTGRES_USER=${DB_USER}
@@ -13,7 +13,7 @@ services:
 
   adminer:
     image: adminer:latest
-    container_name: adminer
+    container_name: drizzleAdminer
     ports:
       - "8080:8080"
     depends_on:

@@ -8,6 +8,8 @@ import { showRoutes } from 'hono/dev';
 import { logger as httpLogger } from 'hono/logger';
 import { trimTrailingSlash } from 'hono/trailing-slash';
 
+import type { Server as HttpServer } from 'http';
+import { Server } from 'socket.io';
 import { logger } from './config/logger';
 import { NODE_ENVIRONMENTS } from './libs/constants';
 import { tracing } from './middlewares/tracing';
@@ -38,8 +40,35 @@ if (env.NODE_ENV === NODE_ENVIRONMENTS.development) {
 }
 
 const port = parseInt(env.PORT);
-logger.info(`Server is running on port: ${port}, env: ${env.NODE_ENV}`);
-const server = serve({ fetch: app.fetch, port });
+const server = serve({ fetch: app.fetch, port }, (info) => {
+    logger.info(`Server is running: http://${info.address}:${info.port}, env: ${env.NODE_ENV}`);
+});
+
+const ioServer = new Server(server as HttpServer, {
+    path: '/ws',
+    serveClient: false,
+    cors: {
+        origin: ['http://127.0.0.1:5500'], // Update this to include your client origin
+        methods: ['GET', 'POST'],
+        credentials: true,
+    },
+});
+
+ioServer.on('error', (err) => {
+    logger.error(err);
+});
+
+ioServer.on('connection', (socket) => {
+    logger.info('Client Connected');
+
+    socket.on('disconnect', () => {
+        logger.info('Client Disconnected');
+    });
+});
+
+setInterval(() => {
+    ioServer.emit('hello', 'world');
+}, 1000);
 
 process.on('SIGTERM', () => {
     logger.info('SIGTERM signal received');
